@@ -49,8 +49,8 @@ Implement the Stage 2 asset management layer on top of the existing Stage 1 Supa
     - Keep all Stage 1 types untouched
     - _Requirements: 2, 3, 4_
 
-- [ ] 3. Implement the asset service
-  - [ ] 3.1 Create `src/services/assetService.ts`
+- [x] 3. Implement the asset service
+  - [x] 3.1 Create `src/services/assetService.ts`
     - Implement `listAssets(): Promise<AssetWithCategory[]>` — SELECT assets JOIN asset_categories, return typed array
     - Implement `searchAssets(query: string): Promise<AssetWithCategory[]>` — ilike on tag and name columns with OR, min 2 chars enforced by caller
     - Implement `createAsset(input: CreateAssetInput): Promise<Asset>` — INSERT omitting `tag` so DB default fires; catch error code `23505` where detail includes "serial_number" and re-throw `DuplicateSerialError`
@@ -78,8 +78,8 @@ Implement the Stage 2 asset management layer on top of the existing Stage 1 Supa
     - Tag comment: `// Feature: assetflow-stage2, Property 7`
     - **Validates: Requirements 2.5, 20.1**
 
-- [ ] 4. Implement the allocation service
-  - [ ] 4.1 Create `src/services/allocationService.ts`
+- [x] 4. Implement the allocation service
+  - [x] 4.1 Create `src/services/allocationService.ts`
     - Implement `getAllocationsForAsset(assetId: string): Promise<AllocationWithProfiles[]>` — SELECT allocations JOIN profiles twice (assigned_to, assigned_by), order by created_at DESC
     - Implement `getActiveAllocation(assetId: string): Promise<AllocationWithProfiles | null>` — filter WHERE returned_at IS NULL, single row
     - Implement `createAllocation(input: CreateAllocationInput): Promise<Allocation>` — INSERT with returned_at omitted; catch error code `23505` and re-throw `AllocationConflictError`
@@ -141,7 +141,7 @@ Implement the Stage 2 asset management layer on top of the existing Stage 1 Supa
     - Tag comment: `// Feature: assetflow-stage2, Property 15`
     - **Validates: Requirements 19.2, 19.3**
 
-- [ ] 5. Checkpoint — services and DB layer complete
+- [x] 5. Checkpoint — services and DB layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 6. Build the RegisterAssetModal component
