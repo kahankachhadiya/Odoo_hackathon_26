@@ -15,7 +15,7 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
 
 ## Tasks
 
-- [ ] 1. Write the Stage 3 database migration file
+- [x] 1. Write the Stage 3 database migration file
   - Create `supabase/migration_stage3_booking_maintenance.sql` (additive only — never touch schema.sql or Stage 2 migration)
   - Add a prerequisite guard: verify `assets`, `profiles`, `is_admin()`, and `is_asset_manager()` exist before proceeding
   - Create enum `booking_status` ('Upcoming', 'Ongoing', 'Completed', 'Cancelled')
