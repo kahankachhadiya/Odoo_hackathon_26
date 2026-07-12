@@ -23,7 +23,7 @@ export async function listMaintenanceRequests(): Promise<MaintenanceRequestWithD
     .select(`
       *,
       assets ( tag ),
-      profiles ( full_name )
+      profiles!maintenance_requests_requested_by_fkey ( full_name )
     `)
     .neq('status', 'Rejected')
     .order('created_at', { ascending: false })
@@ -59,14 +59,16 @@ export async function listMaintenanceRequests(): Promise<MaintenanceRequestWithD
 export async function createMaintenanceRequest(
   input: CreateMaintenanceRequestInput
 ): Promise<MaintenanceRequest> {
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { data, error } = await supabase
     .from('maintenance_requests')
     .insert({
       asset_id: input.asset_id,
       issue_description: input.issue_description,
       priority: input.priority,
-      // requested_by is omitted — automatically populated by RLS using auth.uid()
-      // status defaults to 'Pending' in DB — omitted
+      requested_by: user?.id,
+      // status defaults to 'Pending' in DB
     })
     .select()
     .single()

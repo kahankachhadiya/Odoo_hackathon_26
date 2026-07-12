@@ -101,6 +101,7 @@ export interface CreateAssetInput {
   serial_number?: string | null
   condition?: string | null
   location?: string | null
+  is_bookable?: boolean
 }
 
 export interface CreateAllocationInput {

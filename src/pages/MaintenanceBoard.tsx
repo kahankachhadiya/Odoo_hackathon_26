@@ -77,17 +77,15 @@ export default function MaintenanceBoard() {
 
   // ── Modal success handler ────────────────────────────────────────────────────
 
-  function handleRaiseSuccess(newRequest: MaintenanceRequest): void {
-    // Build a minimal MaintenanceRequestWithDetails from the new request.
-    // asset_tag and requested_by_name will be populated on next re-fetch,
-    // but prepending gives immediate feedback in the Pending column.
-    const withDetails: MaintenanceRequestWithDetails = {
-      ...newRequest,
-      asset_tag: assets.find((a) => a.id === newRequest.asset_id)?.tag ?? '',
-      requested_by_name: null,
-    }
-    setRequests((prev) => [withDetails, ...prev])
+  async function handleRaiseSuccess(_newRequest: MaintenanceRequest): Promise<void> {
+    // Re-fetch so the join populates asset_tag and requested_by_name correctly
     setIsModalOpen(false)
+    try {
+      const updated = await listMaintenanceRequests()
+      setRequests(updated)
+    } catch {
+      // Silently ignore — board still shows existing requests
+    }
   }
 
   // ── Effective role (never null for KanbanColumn) ─────────────────────────────

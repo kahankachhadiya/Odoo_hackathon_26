@@ -50,8 +50,17 @@ export default function BookingForm({ selectedAsset, onSuccess }: BookingFormPro
     e.preventDefault()
     if (!selectedAsset) return
 
-    const start_time = `${form.date}T${form.startTime}:00`
-    const end_time = `${form.date}T${form.endTime}:00`
+    // Build ISO 8601 strings with local timezone offset so the DB stores
+    // the correct UTC equivalent (avoids UTC shift on naive timestamps).
+    const localOffset = -new Date().getTimezoneOffset() // minutes, positive for UTC+
+    const sign = localOffset >= 0 ? '+' : '-'
+    const absOffset = Math.abs(localOffset)
+    const hh = String(Math.floor(absOffset / 60)).padStart(2, '0')
+    const mm = String(absOffset % 60).padStart(2, '0')
+    const tzSuffix = `${sign}${hh}:${mm}`
+
+    const start_time = `${form.date}T${form.startTime}:00${tzSuffix}`
+    const end_time   = `${form.date}T${form.endTime}:00${tzSuffix}`
 
     setSubmitting(true)
     setError(null)

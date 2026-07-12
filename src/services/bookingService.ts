@@ -47,10 +47,10 @@ export async function listBookableAssets(): Promise<Asset[]> {
  * Requirements: 16.2
  */
 export async function getTodaysBookings(assetId: string): Promise<Booking[]> {
-  // Calculate UTC day boundaries for today
+  // Use local calendar day boundaries, not UTC, so "today" matches the user's clock.
   const now = new Date()
-  const startOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0))
-  const endOfDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0, 0))
+  const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+  const endOfDay   = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0, 0)
 
   const { data, error } = await supabase
     .from('bookings')
@@ -87,6 +87,8 @@ export async function getTodaysBookings(assetId: string): Promise<Booking[]> {
  * Requirements: 16.3
  */
 export async function createBooking(input: CreateBookingInput): Promise<Booking> {
+  const { data: { user } } = await supabase.auth.getUser()
+
   const { data, error } = await supabase
     .from('bookings')
     .insert({
@@ -94,7 +96,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
       title: input.title,
       start_time: input.start_time,
       end_time: input.end_time,
-      // booked_by is omitted — automatically populated by RLS using auth.uid()
+      booked_by: user?.id,
     })
     .select()
     .single()

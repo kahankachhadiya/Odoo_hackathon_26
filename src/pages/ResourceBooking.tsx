@@ -29,10 +29,12 @@ export default function ResourceBooking() {
     setLoadingAssets(true)
     try {
       const assets = await listBookableAssets()
+      console.log('[ResourceBooking] bookable assets fetched:', assets)
       setBookableAssets(assets)
-    } catch {
+    } catch (err) {
       // Per requirements 7.2: on fetch failure, render selector in empty state
       // without displaying an error — just leave bookableAssets as []
+      console.error('[ResourceBooking] listBookableAssets error:', err)
       setBookableAssets([])
     } finally {
       setLoadingAssets(false)

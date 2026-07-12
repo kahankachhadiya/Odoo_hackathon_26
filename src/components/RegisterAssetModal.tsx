@@ -24,6 +24,7 @@ interface FormState {
   serial_number: string
   condition: string
   location: string
+  is_bookable: boolean
 }
 
 const emptyForm: FormState = {
@@ -32,6 +33,7 @@ const emptyForm: FormState = {
   serial_number: '',
   condition: '',
   location: '',
+  is_bookable: false,
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -56,8 +58,9 @@ export default function RegisterAssetModal({
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) {
-    const { name, value } = e.target
-    setForm((prev) => ({ ...prev, [name]: value }))
+    const { name, value, type } = e.target
+    const checked = type === 'checkbox' ? (e.target as HTMLInputElement).checked : undefined
+    setForm((prev) => ({ ...prev, [name]: type === 'checkbox' ? (checked ?? false) : value }))
 
     // Clear field-level errors on edit
     if (name === 'name') setNameError(null)
@@ -107,6 +110,7 @@ export default function RegisterAssetModal({
       serial_number: form.serial_number.trim() || null,
       condition: form.condition.trim() || null,
       location: form.location.trim() || null,
+      is_bookable: form.is_bookable,
     }
 
     try {
@@ -254,6 +258,21 @@ export default function RegisterAssetModal({
             />
           </div>
 
+          {/* Bookable — checkbox */}
+          <div style={styles.checkboxGroup}>
+            <input
+              id="asset-bookable"
+              type="checkbox"
+              name="is_bookable"
+              checked={form.is_bookable}
+              onChange={handleChange}
+              style={styles.checkbox}
+            />
+            <label htmlFor="asset-bookable" style={styles.checkboxLabel}>
+              Make this asset bookable (available for resource reservations)
+            </label>
+          </div>
+
           {/* Generic server-side error */}
           {submitError && (
             <p style={styles.submitError} role="alert">
@@ -392,6 +411,24 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: '#2563eb',
     border: 'none',
     borderRadius: '6px',
+    cursor: 'pointer',
+  },
+  checkboxGroup: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.5rem',
+    marginBottom: '1rem',
+  },
+  checkbox: {
+    width: '16px',
+    height: '16px',
+    cursor: 'pointer',
+    accentColor: '#2563eb',
+    flexShrink: 0,
+  },
+  checkboxLabel: {
+    fontSize: '0.875rem',
+    color: '#374151',
     cursor: 'pointer',
   },
 }

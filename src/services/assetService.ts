@@ -104,6 +104,7 @@ export async function createAsset(input: CreateAssetInput): Promise<Asset> {
       serial_number: input.serial_number ?? null,
       condition: input.condition ?? null,
       location: input.location ?? null,
+      is_bookable: input.is_bookable ?? false,
       // tag is intentionally omitted — DB default fires
     })
     .select()
