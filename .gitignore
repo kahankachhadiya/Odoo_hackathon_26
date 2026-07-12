@@ -1,0 +1,48 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg
+*.egg-info/
+dist/
+build/
+*.whl
+.eggs/
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Odoo specific
+*.pyc
+.odoo_history
+filestore/
+sessions/
+*.log
+odoo.conf
+/conf/
+/data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+*.pytest_ini
+
+# Node / assets build
+node_modules/
+/static/description/index.html
+
+# OS
+Thumbs.db
