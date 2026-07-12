@@ -43,67 +43,41 @@ export default function DepartmentsTab() {
     setLoading(true)
     setFetchError(null)
 
-    // Fetch departments with head profile name and parent department name via Supabase joins
-    const { data, error } = await supabase
-      .from('departments')
-      .select(`
-        id,
-        name,
-        status,
-        head_id,
-        parent_department_id,
-        head:profiles!departments_head_id_fkey ( full_name ),
-        parent:departments!departments_parent_department_id_fkey ( name )
-      `)
+    // Fetch departments and profiles in two flat queries, then resolve names client-side.
+    // Avoids Supabase self-join and cross-table join hint issues with PostgREST.
+    const [{ data: deptData, error: deptError }, { data: profileData }] = await Promise.all([
+      supabase.from('departments').select('id, name, status, head_id, parent_department_id'),
+      supabase.from('profiles').select('id, full_name'),
+    ])
 
-    if (error) {
+    if (deptError) {
       setFetchError('Failed to load departments. Please try again.')
       setLoading(false)
       return
     }
 
-    const mapped: DepartmentRow[] = (data ?? []).map((d) => {
-      // Supabase returns the joined rows as objects or arrays; handle both shapes
-      const headRecord = Array.isArray(d.head) ? d.head[0] : d.head
-      const parentRecord = Array.isArray(d.parent) ? d.parent[0] : d.parent
+    const depts = deptData ?? []
+    const profileMap = new Map((profileData ?? []).map((p) => [p.id, p.full_name]))
+    const deptNameMap = new Map(depts.map((d) => [d.id, d.name]))
 
-      return {
-        id: d.id,
-        name: d.name,
-        status: d.status,
-        headName: (headRecord as { full_name: string | null } | null)?.full_name ?? null,
-        parentName: (parentRecord as { name: string } | null)?.name ?? null,
-      }
-    })
-
-    setRows(mapped)
-
-    // Also refresh the raw departments list used by the modal dropdown
-    const deptList = (data ?? []).map((d) => ({
+    const mapped: DepartmentRow[] = depts.map((d) => ({
       id: d.id,
       name: d.name,
-      head_id: d.head_id,
-      parent_department_id: d.parent_department_id,
       status: d.status,
-    })) as Department[]
-    setDepartments(deptList)
+      headName: d.head_id ? (profileMap.get(d.head_id) ?? null) : null,
+      parentName: d.parent_department_id ? (deptNameMap.get(d.parent_department_id) ?? null) : null,
+    }))
 
+    setRows(mapped)
+    setDepartments(depts as Department[])
+    setProfiles((profileData ?? []).map((p) => ({ id: p.id, full_name: p.full_name })))
     setLoading(false)
-  }, [])
-
-  const fetchProfiles = useCallback(async () => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .order('full_name', { ascending: true })
-    setProfiles(data ?? [])
   }, [])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void fetchDepartments()
-    void fetchProfiles()
-  }, [fetchDepartments, fetchProfiles])
+  }, [fetchDepartments])
 
   // ── Modal helpers ──────────────────────────────────────────────────────────
 
