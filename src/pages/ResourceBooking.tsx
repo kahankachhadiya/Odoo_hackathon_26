@@ -154,19 +154,20 @@ export default function ResourceBooking() {
 const styles: Record<string, React.CSSProperties> = {
   page: {
     minHeight: '100vh',
-    backgroundColor: '#f5f5f5',
+    backgroundColor: 'transparent',
     padding: '2rem',
+    color: 'var(--text-primary)',
   },
   heading: {
     margin: '0 0 0.25rem',
     fontSize: '1.75rem',
     fontWeight: 700,
-    color: '#111',
+    color: 'var(--text-primary)',
   },
   subtitle: {
     margin: '0 0 1.5rem',
     fontSize: '0.95rem',
-    color: '#6b7280',
+    color: 'var(--text-secondary)',
   },
   layout: {
     display: 'flex',
@@ -184,38 +185,37 @@ const styles: Record<string, React.CSSProperties> = {
     flex: '1 1 340px',
   },
   card: {
-    backgroundColor: '#ffffff',
-    border: '1px solid #e5e7eb',
-    borderRadius: '8px',
-    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
+    backgroundColor: 'var(--bg-primary)',
+    border: '1px solid var(--border-color)',
+    borderRadius: 'var(--radius-card)',
     padding: '1.25rem',
   },
   cardHeading: {
     margin: '0 0 0.875rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   scheduleHeading: {
     margin: '0 0 0.75rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   selectedAssetLabel: {
     margin: '0 0 0.875rem',
     fontSize: '0.875rem',
-    color: '#374151',
+    color: 'var(--text-secondary)',
   },
   stateText: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#6b7280',
+    color: 'var(--text-secondary)',
   },
   promptText: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#6b7280',
+    color: 'var(--text-secondary)',
     fontStyle: 'italic',
   },
 }
