@@ -199,7 +199,7 @@ export async function createBooking(input: CreateBookingInput): Promise<Booking>
       title: input.title,
       start_time: input.start_time,
       end_time: input.end_time,
-      booked_by: user?.id,
+      booked_by: user?.id ?? '',
     })
     .select()
     .single()

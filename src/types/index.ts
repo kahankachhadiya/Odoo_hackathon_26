@@ -196,3 +196,39 @@ export class BookingOverlapError extends Error {
     this.name = 'BookingOverlapError'
   }
 }
+
+// ─── Stage 4 Enum Types ───────────────────────────────────────────────────────
+
+export type ActivityLogEventType =
+  | 'Asset Registered'
+  | 'Allocation'
+  | 'Transfer'
+  | 'Booking'
+  | 'Maintenance'
+  | 'Audit'
+
+// ─── Stage 4 Domain Types ─────────────────────────────────────────────────────
+
+export interface ActivityLog {
+  id: string
+  event_type: ActivityLogEventType
+  message: string
+  actor_id: string | null
+  reference_id: string | null
+  created_at: string
+}
+
+export interface DashboardKPIs {
+  totalAvailableAssets: number
+  totalAllocatedAssets: number
+  activeBookingsToday: number
+  pendingMaintenance: number
+}
+
+// ─── Stage 4 Service Input Types ─────────────────────────────────────────────
+
+export interface GetActivityLogsOptions {
+  eventType?: ActivityLogEventType
+  page?: number
+  pageSize?: number
+}

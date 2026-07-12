@@ -621,3 +621,238 @@ CREATE POLICY "maintenance_requests_update_asset_manager"
 CREATE POLICY "maintenance_requests_delete_denied"
   ON maintenance_requests FOR DELETE
   USING (false);
+
+
+-- =============================================================================
+-- AssetFlow Stage 4 — Dashboards & Telemetry
+-- All objects below are additive — they extend Stages 1–3 without modifying them.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Enum type (Stage 4)
+-- ---------------------------------------------------------------------------
+DO $$ BEGIN
+  CREATE TYPE activity_log_event_type AS ENUM (
+    'Asset Registered',
+    'Allocation',
+    'Transfer',
+    'Booking',
+    'Maintenance',
+    'Audit'
+  );
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- ---------------------------------------------------------------------------
+-- Table: activity_logs
+-- Append-only audit ledger written exclusively by SECURITY DEFINER triggers.
+-- actor_id uses ON DELETE SET NULL so log rows survive profile deletion (Req 1.3).
+-- reference_id carries no FK constraint — referenced rows may be deleted while
+-- the log entry must be preserved (Req 1.1).
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id           UUID                    PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_type   activity_log_event_type NOT NULL,
+  message      TEXT                    NOT NULL
+               CHECK (char_length(message) BETWEEN 1 AND 1000),
+  actor_id     UUID                    REFERENCES profiles(id) ON DELETE SET NULL,
+  reference_id UUID,
+  created_at   TIMESTAMPTZ             NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
+-- log_new_allocation() — SECURITY DEFINER trigger function
+-- AFTER INSERT on allocations FOR EACH ROW.
+-- Looks up asset tag and both profile full_names with 'Unknown' fallback.
+-- Entire body wrapped in EXCEPTION WHEN OTHERS THEN NULL so the core
+-- allocation INSERT is never blocked by a telemetry failure (Req 2.4).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION log_new_allocation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_asset_tag        TEXT;
+  v_assigned_by_name TEXT;
+  v_assigned_to_name TEXT;
+  v_message          TEXT;
+BEGIN
+  BEGIN
+    SELECT tag INTO v_asset_tag
+      FROM public.assets WHERE id = NEW.asset_id;
+    v_asset_tag := COALESCE(v_asset_tag, 'Unknown');
+
+    SELECT full_name INTO v_assigned_by_name
+      FROM public.profiles WHERE id = NEW.assigned_by;
+    v_assigned_by_name := COALESCE(v_assigned_by_name, 'Unknown');
+
+    SELECT full_name INTO v_assigned_to_name
+      FROM public.profiles WHERE id = NEW.assigned_to;
+    v_assigned_to_name := COALESCE(v_assigned_to_name, 'Unknown');
+
+    v_message := 'Asset ' || v_asset_tag
+              || ' allocated by ' || v_assigned_by_name
+              || ' to ' || v_assigned_to_name;
+
+    INSERT INTO public.activity_logs (event_type, message, actor_id, reference_id)
+    VALUES ('Allocation', v_message, NEW.assigned_by, NEW.id);
+
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_allocation_logged ON allocations;
+CREATE TRIGGER on_allocation_logged
+  AFTER INSERT ON allocations
+  FOR EACH ROW EXECUTE FUNCTION log_new_allocation();
+
+-- ---------------------------------------------------------------------------
+-- log_maintenance_update() — SECURITY DEFINER trigger function
+-- AFTER UPDATE on maintenance_requests FOR EACH ROW.
+-- Only fires when status transitions to 'Approved' or 'Resolved' from a
+-- different prior status — OLD.status guard prevents duplicate log entries
+-- on idempotent re-updates (Reqs 3.2, 3.3, 3.4).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION log_maintenance_update()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_asset_tag TEXT;
+  v_message   TEXT;
+BEGIN
+  IF (NEW.status = 'Approved'  AND OLD.status != 'Approved')
+  OR (NEW.status = 'Resolved'  AND OLD.status != 'Resolved')
+  THEN
+    BEGIN
+      SELECT tag INTO v_asset_tag
+        FROM public.assets WHERE id = NEW.asset_id;
+      v_asset_tag := COALESCE(v_asset_tag, 'Unknown');
+
+      v_message := 'Maintenance request for ' || v_asset_tag || ' ' || NEW.status;
+
+      INSERT INTO public.activity_logs (event_type, message, actor_id, reference_id)
+      VALUES ('Maintenance', v_message, NEW.requested_by, NEW.id);
+
+    EXCEPTION WHEN OTHERS THEN
+      NULL;
+    END;
+  END IF;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_maintenance_logged ON maintenance_requests;
+CREATE TRIGGER on_maintenance_logged
+  AFTER UPDATE ON maintenance_requests
+  FOR EACH ROW EXECUTE FUNCTION log_maintenance_update();
+
+-- ---------------------------------------------------------------------------
+-- log_booking_created() — SECURITY DEFINER trigger function
+-- AFTER INSERT on bookings FOR EACH ROW.
+-- Message uses NEW.title and NEW.start_time::DATE for a human-readable entry.
+-- Wrapped in EXCEPTION WHEN OTHERS THEN NULL — core booking INSERT must never
+-- be blocked by a telemetry failure (Req 4.3).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION log_booking_created()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_message TEXT;
+BEGIN
+  BEGIN
+    v_message := 'Resource ' || NEW.title
+              || ' booked for ' || NEW.start_time::DATE;
+
+    INSERT INTO public.activity_logs (event_type, message, actor_id, reference_id)
+    VALUES ('Booking', v_message, NEW.booked_by, NEW.id);
+
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+
+  RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_booking_logged ON bookings;
+CREATE TRIGGER on_booking_logged
+  AFTER INSERT ON bookings
+  FOR EACH ROW EXECUTE FUNCTION log_booking_created();
+
+-- ---------------------------------------------------------------------------
+-- RLS: activity_logs
+-- Four-tier visibility model enforced entirely at the DB level.
+-- SECURITY DEFINER trigger functions bypass RLS and are the sole write path.
+-- ---------------------------------------------------------------------------
+ALTER TABLE activity_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "activity_logs_select_admin_asset_manager" ON activity_logs;
+DROP POLICY IF EXISTS "activity_logs_select_dept_head"           ON activity_logs;
+DROP POLICY IF EXISTS "activity_logs_select_employee"            ON activity_logs;
+DROP POLICY IF EXISTS "activity_logs_insert_denied"              ON activity_logs;
+DROP POLICY IF EXISTS "activity_logs_update_denied"              ON activity_logs;
+DROP POLICY IF EXISTS "activity_logs_delete_denied"              ON activity_logs;
+
+-- Tier 1: Admin / Asset Manager — see all rows
+CREATE POLICY "activity_logs_select_admin_asset_manager"
+  ON activity_logs FOR SELECT
+  USING (
+    auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.profiles
+      WHERE id = auth.uid()
+        AND role IN ('Admin', 'Asset Manager')
+    )
+  );
+
+-- Tier 2: Department Head — see rows where actor belongs to their department
+-- actor_id IS NOT NULL guard ensures NULL-actor rows are never exposed
+CREATE POLICY "activity_logs_select_dept_head"
+  ON activity_logs FOR SELECT
+  USING (
+    auth.role() = 'authenticated'
+    AND activity_logs.actor_id IS NOT NULL
+    AND EXISTS (
+      SELECT 1
+      FROM public.profiles  AS actor
+      JOIN public.departments AS dept ON dept.id = actor.department_id
+      WHERE actor.id     = activity_logs.actor_id
+        AND dept.head_id = auth.uid()
+    )
+  );
+
+-- Tier 3: Employee — see only their own rows
+CREATE POLICY "activity_logs_select_employee"
+  ON activity_logs FOR SELECT
+  USING (
+    auth.role() = 'authenticated'
+    AND activity_logs.actor_id = auth.uid()
+  );
+
+-- INSERT denied — SECURITY DEFINER triggers are the sole insert path
+CREATE POLICY "activity_logs_insert_denied"
+  ON activity_logs FOR INSERT
+  WITH CHECK (false);
+
+-- UPDATE denied — append-only ledger
+CREATE POLICY "activity_logs_update_denied"
+  ON activity_logs FOR UPDATE
+  USING (false);
+
+-- DELETE denied — append-only ledger
+CREATE POLICY "activity_logs_delete_denied"
+  ON activity_logs FOR DELETE
+  USING (false);

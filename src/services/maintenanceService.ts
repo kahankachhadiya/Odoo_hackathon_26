@@ -67,7 +67,7 @@ export async function createMaintenanceRequest(
       asset_id: input.asset_id,
       issue_description: input.issue_description,
       priority: input.priority,
-      requested_by: user?.id,
+      requested_by: user?.id ?? '',
       // status defaults to 'Pending' in DB
     })
     .select()

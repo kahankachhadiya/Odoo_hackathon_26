@@ -16,7 +16,7 @@ Implement Stage 4 telemetry backbone and three new/rebuilt screens on top of the
 
 ## Tasks
 
-- [ ] 1. Write the Stage 4 database migration file and update schema.sql
+- [x] 1. Write the Stage 4 database migration file and update schema.sql
   - Create `supabase/migration_stage4_dashboards_telemetry.sql` (additive only — never touch prior migration files)
   - Add `activity_log_event_type` enum using idempotent `DO $$ BEGIN ... EXCEPTION WHEN duplicate_object THEN NULL; END $$` block with exactly 6 values: `'Asset Registered'`, `'Allocation'`, `'Transfer'`, `'Booking'`, `'Maintenance'`, `'Audit'`
   - Create `activity_logs` table using `CREATE TABLE IF NOT EXISTS` with columns: `id UUID PRIMARY KEY DEFAULT gen_random_uuid()`, `event_type activity_log_event_type NOT NULL`, `message TEXT NOT NULL CHECK (char_length(message) BETWEEN 1 AND 1000)`, `actor_id UUID REFERENCES profiles(id) ON DELETE SET NULL`, `reference_id UUID`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`
@@ -31,8 +31,8 @@ Implement Stage 4 telemetry backbone and three new/rebuilt screens on top of the
   - Append Stage 4 section to `supabase/schema.sql` demarcated by `-- ===...=== AssetFlow Stage 4 — Dashboards & Telemetry ===...===` header comment, containing all the same objects (enum, table, trigger functions, trigger attachments, RLS enable, RLS policies)
   - _Requirements: 1.1, 1.2, 1.3, 2.1, 2.2, 2.3, 2.4, 3.1, 3.2, 3.3, 3.4, 3.5, 4.1, 4.2, 4.3, 5.1, 5.2, 5.3, 5.4, 5.5, 5.6, 5.7, 6.1, 6.2, 6.3, 6.4, 6.5_
 
-- [ ] 2. Add Stage 4 TypeScript types to `src/types/index.ts`
-  - [ ] 2.1 Add `ActivityLogEventType` union type and `ActivityLog`, `DashboardKPIs`, `GetActivityLogsOptions` interfaces
+- [x] 2. Add Stage 4 TypeScript types to `src/types/index.ts`
+  - [x] 2.1 Add `ActivityLogEventType` union type and `ActivityLog`, `DashboardKPIs`, `GetActivityLogsOptions` interfaces
     - Add `// ─── Stage 4 Enum Types ───` section header
     - Add `export type ActivityLogEventType = 'Asset Registered' | 'Allocation' | 'Transfer' | 'Booking' | 'Maintenance' | 'Audit'`
     - Add `// ─── Stage 4 Domain Types ───` section header
@@ -44,8 +44,8 @@ Implement Stage 4 telemetry backbone and three new/rebuilt screens on top of the
     - _Requirements: 7.1, 7.2, 7.3, 7.4_
 
 
-- [ ] 3. Implement `activityService.ts`
-  - [ ] 3.1 Create `src/services/activityService.ts`
+- [x] 3. Implement `activityService.ts`
+  - [x] 3.1 Create `src/services/activityService.ts`
     - Implement `getRecentActivity(limit: number): Promise<ActivityLog[]>` — SELECT from `activity_logs` ordered by `created_at DESC` with `.limit(limit)`; throw `new Error(error.message)` on Supabase error
     - Implement `getActivityLogs(options: GetActivityLogsOptions): Promise<{ data: ActivityLog[]; count: number }>` — SELECT with `{ count: 'exact' }`, ordered `created_at DESC`; compute `from = (page - 1) * pageSize` and `to = from + pageSize - 1` using defaults (page=1, pageSize=20); call `.range(from, to)`; when `options.eventType` provided append `.eq('event_type', options.eventType)`; when Supabase returns `null` for count use `0`; throw `new Error(error.message)` on error
     - Use `import type { ActivityLog, GetActivityLogsOptions } from '../types'` — zero `any`
@@ -77,8 +77,8 @@ Implement Stage 4 telemetry backbone and three new/rebuilt screens on top of the
     - **Validates: Requirements 8.2**
 
 
-- [ ] 4. Implement `dashboardService.ts`
-  - [ ] 4.1 Create `src/services/dashboardService.ts`
+- [x] 4. Implement `dashboardService.ts`
+  - [x] 4.1 Create `src/services/dashboardService.ts`
     - Implement `getDashboardKPIs(): Promise<DashboardKPIs>` — run four count queries concurrently via `Promise.all`, each using `{ count: 'exact', head: true }`:
       - Query 1: `assets` WHERE `status = 'Available'` → `totalAvailableAssets`
       - Query 2: `assets` WHERE `status = 'Allocated'` → `totalAllocatedAssets`
