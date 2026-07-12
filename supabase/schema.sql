@@ -445,3 +445,179 @@ CREATE POLICY "transfer_requests_update_dept_head_scoped"
 CREATE POLICY "transfer_requests_delete_denied"
   ON transfer_requests FOR DELETE
   USING (false);
+
+
+-- =============================================================================
+-- AssetFlow Stage 3 — Resource Booking & Maintenance Workflows
+-- All objects below are additive — they extend Stages 1 & 2 without modifying them.
+-- =============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Enum types (Stage 3)
+-- ---------------------------------------------------------------------------
+CREATE TYPE booking_status AS ENUM (
+  'Upcoming',
+  'Ongoing',
+  'Completed',
+  'Cancelled'
+);
+
+CREATE TYPE maintenance_priority AS ENUM (
+  'Low',
+  'Medium',
+  'High'
+);
+
+CREATE TYPE maintenance_status AS ENUM (
+  'Pending',
+  'Approved',
+  'In Progress',
+  'Resolved',
+  'Rejected'
+);
+
+-- ---------------------------------------------------------------------------
+-- Table: bookings
+-- Records every time-slot reservation on a bookable asset.
+-- ON DELETE CASCADE on both FKs: deleting an asset or profile automatically
+-- removes all associated bookings (no audit-trail requirement per PRD).
+-- ---------------------------------------------------------------------------
+CREATE TABLE bookings (
+  id         UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+  asset_id   UUID           NOT NULL REFERENCES assets(id)   ON DELETE CASCADE,
+  booked_by  UUID           NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  title      TEXT           NOT NULL,
+  start_time TIMESTAMPTZ    NOT NULL,
+  end_time   TIMESTAMPTZ    NOT NULL,
+  status     booking_status NOT NULL DEFAULT 'Upcoming',
+  
+  CONSTRAINT bookings_time_order CHECK (start_time < end_time)
+);
+
+-- ---------------------------------------------------------------------------
+-- Table: maintenance_requests
+-- Records repair / maintenance tickets raised against specific assets.
+-- ON DELETE CASCADE on both FKs matches the bookings pattern.
+-- ---------------------------------------------------------------------------
+CREATE TABLE maintenance_requests (
+  id                UUID                 PRIMARY KEY DEFAULT gen_random_uuid(),
+  asset_id          UUID                 NOT NULL REFERENCES assets(id)   ON DELETE CASCADE,
+  requested_by      UUID                 NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+  issue_description TEXT                 NOT NULL,
+  priority          maintenance_priority NOT NULL DEFAULT 'Medium',
+  status            maintenance_status   NOT NULL DEFAULT 'Pending',
+  technician_name   TEXT,
+  created_at        TIMESTAMPTZ          NOT NULL DEFAULT now()
+);
+
+-- ---------------------------------------------------------------------------
+-- prevent_booking_overlap() — SECURITY DEFINER trigger function
+-- BEFORE trigger on bookings — abort INSERT/UPDATE if any non-cancelled
+-- booking on the same asset has an overlapping time interval.
+-- Overlap condition (half-open interval check):
+--   NEW.start_time < existing.end_time  AND  NEW.end_time > existing.start_time
+-- The `id != NEW.id` guard prevents a row from conflicting with itself
+-- on UPDATE (e.g., changing only the title leaves times unchanged).
+-- Adjacent bookings (b1.end_time == b2.start_time) are PERMITTED because
+-- the strict-inequality check means touching intervals are not overlapping.
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION prevent_booking_overlap()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM public.bookings
+    WHERE  asset_id       = NEW.asset_id
+      AND  id            != NEW.id
+      AND  status        != 'Cancelled'
+      AND  NEW.start_time < end_time
+      AND  NEW.end_time   > start_time
+  ) THEN
+    RAISE EXCEPTION 'Booking time slot overlaps with an existing reservation';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_booking_overlap_check
+  BEFORE INSERT OR UPDATE ON bookings
+  FOR EACH ROW EXECUTE FUNCTION prevent_booking_overlap();
+
+-- ---------------------------------------------------------------------------
+-- sync_maintenance_status() — SECURITY DEFINER trigger function
+-- AFTER trigger on maintenance_requests — keeps assets.status in sync
+-- whenever a maintenance ticket transitions to a significant state.
+-- Transition rules:
+--   Approved  → assets.status = 'Under Maintenance'
+--   Resolved  → assets.status = 'Available'
+--   Rejected  → assets.status = 'Available' (only when asset is currently Under Maintenance)
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION sync_maintenance_status()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+BEGIN
+  IF NEW.status = 'Approved' AND OLD.status != 'Approved' THEN
+    UPDATE public.assets SET status = 'Under Maintenance' WHERE id = NEW.asset_id;
+  ELSIF NEW.status = 'Resolved' AND OLD.status != 'Resolved' THEN
+    UPDATE public.assets SET status = 'Available' WHERE id = NEW.asset_id;
+  ELSIF NEW.status = 'Rejected' THEN
+    UPDATE public.assets
+    SET status = 'Available'
+    WHERE id = NEW.asset_id AND status = 'Under Maintenance';
+  END IF;
+  RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER on_maintenance_status_change
+  AFTER UPDATE ON maintenance_requests
+  FOR EACH ROW EXECUTE FUNCTION sync_maintenance_status();
+
+-- ---------------------------------------------------------------------------
+-- RLS: bookings
+-- ---------------------------------------------------------------------------
+ALTER TABLE bookings ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "bookings_select_authenticated"
+  ON bookings FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "bookings_insert_bookable_asset"
+  ON bookings FOR INSERT
+  WITH CHECK (
+    auth.role() = 'authenticated'
+    AND EXISTS (
+      SELECT 1 FROM public.assets
+      WHERE id = bookings.asset_id AND is_bookable = true
+    )
+  );
+
+CREATE POLICY "bookings_update_owner_or_admin"
+  ON bookings FOR UPDATE
+  USING (booked_by = auth.uid() OR is_admin())
+  WITH CHECK (booked_by = auth.uid() OR is_admin());
+
+CREATE POLICY "bookings_delete_denied"
+  ON bookings FOR DELETE
+  USING (false);
+
+-- ---------------------------------------------------------------------------
+-- RLS: maintenance_requests
+-- ---------------------------------------------------------------------------
+ALTER TABLE maintenance_requests ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "maintenance_requests_select_authenticated"
+  ON maintenance_requests FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+CREATE POLICY "maintenance_requests_insert_authenticated"
+  ON maintenance_requests FOR INSERT
+  WITH CHECK (auth.role() = 'authenticated');
+
+CREATE POLICY "maintenance_requests_update_asset_manager"
+  ON maintenance_requests FOR UPDATE
+  USING (is_asset_manager())
+  WITH CHECK (is_asset_manager());
+
+CREATE POLICY "maintenance_requests_delete_denied"
+  ON maintenance_requests FOR DELETE
+  USING (false);

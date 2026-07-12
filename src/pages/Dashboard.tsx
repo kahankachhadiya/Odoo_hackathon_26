@@ -11,6 +11,8 @@ export default function Dashboard() {
       <nav style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', justifyContent: 'center' }}>
         <Link to="/assets">Asset Directory</Link>
         <Link to="/allocations">Allocation &amp; Transfer</Link>
+        <Link to="/bookings">Resource Booking</Link>
+        <Link to="/maintenance">Maintenance Board</Link>
       </nav>
     </main>
   )

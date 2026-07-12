@@ -34,7 +34,7 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
   - _Requirements: 1, 2, 3, 4, 5, 6, 14_
 
 - [ ] 2. Extend TypeScript types and database type definitions
-  - [ ] 2.1 Add Stage 3 domain types to `src/types/index.ts`
+  - [x] 2.1 Add Stage 3 domain types to `src/types/index.ts`
     - Add `BookingStatus`, `MaintenancePriority`, `MaintenanceStatus` union types
     - Add `Booking`, `BookingWithAsset`, `MaintenanceRequest`, `MaintenanceRequestWithDetails` interfaces
     - Add `CreateBookingInput`, `CreateMaintenanceRequestInput` input interfaces
@@ -48,8 +48,8 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Keep all Stage 1 and Stage 2 types untouched
     - _Requirements: 15.4_
 
-- [ ] 3. Implement the booking service
-  - [ ] 3.1 Create `src/services/bookingService.ts`
+- [x] 3. Implement the booking service
+  - [x] 3.1 Create `src/services/bookingService.ts`
     - Implement `listBookableAssets(): Promise<Asset[]>` — SELECT assets WHERE is_bookable = true
     - Implement `getTodaysBookings(assetId: string): Promise<Booking[]>` — SELECT bookings WHERE asset_id matches AND date(start_time) = current_date using .gte/.lt bracket on UTC day boundaries
     - Implement `createBooking(input: CreateBookingInput): Promise<Booking>` — INSERT into bookings with booked_by = auth.uid(); catch Supabase error where message includes `'Booking time slot overlaps with an existing reservation'` and re-throw `BookingOverlapError`
@@ -101,8 +101,8 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Tag comment: `// Feature: assetflow-stage3, Property 6: Booking overlap error propagates as typed error`
     - **Validates: Requirements 8.5, 16.3**
 
-- [ ] 4. Implement the maintenance service
-  - [ ] 4.1 Create `src/services/maintenanceService.ts`
+- [x] 4. Implement the maintenance service
+  - [x] 4.1 Create `src/services/maintenanceService.ts`
     - Implement `listMaintenanceRequests(): Promise<MaintenanceRequestWithDetails[]>` — SELECT maintenance_requests WHERE status != 'Rejected' JOIN assets (for tag) JOIN profiles (for requested_by_name), order by created_at DESC
     - Implement `createMaintenanceRequest(input: CreateMaintenanceRequestInput): Promise<MaintenanceRequest>` — INSERT into maintenance_requests with requested_by = auth.uid(), status defaults to 'Pending'
     - Implement `updateMaintenanceStatus(id: string, status: MaintenanceStatus, technicianName?: string): Promise<void>` — UPDATE maintenance_requests SET status, technician_name (if provided) WHERE id
@@ -133,14 +133,14 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
 - [ ] 5. Checkpoint — services and DB layer complete
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 6. Build the Resource Booking UI components
-  - [ ] 6.1 Create `src/components/BookableAssetSelect.tsx`
+- [x] 6. Build the Resource Booking UI components
+  - [x] 6.1 Create `src/components/BookableAssetSelect.tsx`
     - Props: `{ onSelect: (asset: Asset | null) => void; assets: Asset[] }`
     - Render a dropdown or typeahead listing only the provided assets (caller filters for is_bookable = true)
     - On selection emit onSelect callback with chosen asset; on clear emit onSelect(null)
     - _Requirements: 7.1, 7.2_
 
-  - [ ] 6.2 Create `src/components/BookingForm.tsx`
+  - [x] 6.2 Create `src/components/BookingForm.tsx`
     - Props: `{ selectedAsset: Asset | null; onSuccess: (booking: Booking) => void }`
     - Render controlled form: Title (required text, max 255), Date (required date picker), Start Time (required time picker), End Time (required time picker)
     - Disable all fields when selectedAsset is null
@@ -150,7 +150,7 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - On other errors: show inline generic error, keep form populated
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5, 8.6_
 
-  - [ ] 6.3 Create `src/components/ScheduleView.tsx`
+  - [x] 6.3 Create `src/components/ScheduleView.tsx`
     - Props: `{ bookings: Booking[] }`
     - Render chronological list or timeline showing each booking's title, start_time, end_time
     - When bookings array is empty: render "No bookings today" empty-state message
@@ -182,8 +182,8 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Tag comment: `// Feature: assetflow-stage3, Property 10: Schedule view renders all of today's bookings with required fields`
     - **Validates: Requirements 9.1, 9.3**
 
-- [ ] 7. Build Screen 6 — Resource Booking page
-  - [ ] 7.1 Create `src/pages/ResourceBooking.tsx`
+- [x] 7. Build Screen 6 — Resource Booking page
+  - [x] 7.1 Create `src/pages/ResourceBooking.tsx`
     - On mount: call `bookingService.listBookableAssets()` and store in state
     - State: `selectedAsset: Asset | null`, `todaysBookings: Booking[]`
     - Render `BookableAssetSelect` with fetched bookable assets; on selection update selectedAsset state
@@ -201,12 +201,12 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Simulate booking success; assert new booking appears in ScheduleView without page reload
     - _Requirements: 7, 8, 9_
 
-- [ ] 8. Build the Maintenance Kanban UI components
-  - [ ] 8.1 Create `src/utils/roleUtils.ts` (or extend existing utils)
+- [x] 8. Build the Maintenance Kanban UI components
+  - [x] 8.1 Create `src/utils/roleUtils.ts` (or extend existing utils)
     - Export `isAssetManager(role: UserRole): boolean` — returns `role === 'Admin' || role === 'Asset Manager'`
     - _Requirements: 12.1, 12.9_
 
-  - [ ] 8.2 Create `src/components/MaintenanceCard.tsx`
+  - [x] 8.2 Create `src/components/MaintenanceCard.tsx`
     - Props: `{ request: MaintenanceRequestWithDetails; currentUserRole: UserRole; onStatusChange: (id: string, status: MaintenanceStatus, technicianName?: string) => void }`
     - Render card showing: asset_tag, issue_description, priority (colour-coded badge: Low = green/grey, Medium = yellow/amber, High = red/orange), requested_by_name
     - Render action buttons only when `isAssetManager(currentUserRole)` is true:
@@ -217,13 +217,13 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - On button click: call onStatusChange with new status and technician_name (if provided)
     - _Requirements: 11.1, 11.2, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8, 12.9_
 
-  - [ ] 8.3 Create `src/components/KanbanColumn.tsx`
+  - [x] 8.3 Create `src/components/KanbanColumn.tsx`
     - Props: `{ title: string; requests: MaintenanceRequestWithDetails[]; currentUserRole: UserRole; onStatusChange: (id: string, status: MaintenanceStatus, technicianName?: string) => void }`
     - Render column with title header and list of MaintenanceCard components
     - Pass through currentUserRole and onStatusChange to each card
     - _Requirements: 10.1, 10.2, 10.3_
 
-  - [ ] 8.4 Create `src/components/RaiseRequestModal.tsx`
+  - [x] 8.4 Create `src/components/RaiseRequestModal.tsx`
     - Props: `{ isOpen: boolean; onClose: () => void; onSuccess: (request: MaintenanceRequest) => void; assets: Asset[] }`
     - Render modal with: Asset selector (all assets), issue_description textarea (required), Priority selector (Low/Medium/High, default Medium)
     - On submit: call `maintenanceService.createMaintenanceRequest()`
@@ -259,8 +259,8 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Tag comment: `// Feature: assetflow-stage3, Property 9: Action button visibility is role-gated`
     - **Validates: Requirements 12.1, 12.9**
 
-- [ ] 9. Build Screen 7 — Maintenance Board page
-  - [ ] 9.1 Create `src/pages/MaintenanceBoard.tsx`
+- [x] 9. Build Screen 7 — Maintenance Board page
+  - [x] 9.1 Create `src/pages/MaintenanceBoard.tsx`
     - On mount: call `maintenanceService.listMaintenanceRequests()` and `authService.getCurrentUserRole()` in parallel
     - State: `requests: MaintenanceRequestWithDetails[]`, `currentUserRole: UserRole`, `assets: Asset[]`
     - Derive four arrays by filtering requests on status: Pending, Approved, In Progress, Resolved (exclude Rejected)
@@ -287,7 +287,7 @@ Implement Stage 3 operational workflows: **Resource Booking** (Screen 6) and **M
     - Tag comment: `// Feature: assetflow-stage3, Property 8: Kanban board shows each non-rejected request in exactly one column`
     - **Validates: Requirements 10.2, 10.4, 10.5**
 
-- [ ] 10. Wire routes and navigation into App.tsx
+- [x] 10. Wire routes and navigation into App.tsx
   - [ ] 10.1 Add Stage 3 routes to `src/App.tsx`
     - Import `ResourceBooking` from `./pages/ResourceBooking`
     - Import `MaintenanceBoard` from `./pages/MaintenanceBoard`

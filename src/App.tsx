@@ -5,6 +5,8 @@ import Dashboard from './pages/Dashboard'
 import OrganizationSetup from './pages/OrganizationSetup'
 import AssetDirectory from './pages/AssetDirectory'
 import AllocationTransfer from './pages/AllocationTransfer'
+import ResourceBooking from './pages/ResourceBooking'
+import MaintenanceBoard from './pages/MaintenanceBoard'
 import AdminGuard from './components/AdminGuard'
 
 function App() {
@@ -35,6 +37,12 @@ function App() {
 
         {/* Allocation & Transfer — all authenticated roles — Requirements: 10.1, 12.1 */}
         <Route path="/allocations" element={<AllocationTransfer />} />
+
+        {/* Resource Booking — all authenticated roles — Requirements: 18.1, 18.2, 18.3 */}
+        <Route path="/bookings" element={<ResourceBooking />} />
+
+        {/* Maintenance Board — all authenticated roles — Requirements: 18.1, 18.2, 18.3 */}
+        <Route path="/maintenance" element={<MaintenanceBoard />} />
 
         {/* Catch-all → back to login */}
         <Route path="*" element={<Navigate to="/" replace />} />
