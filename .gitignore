@@ -31,7 +31,4 @@ dist-ssr
 # Supabase
 supabase/.temp/
 supabase/.branch/
-
-.kiro
-PRD's
 .vscode
