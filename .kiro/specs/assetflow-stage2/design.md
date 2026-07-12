@@ -87,7 +87,9 @@ Key local state:
 
 ### `src/components/AllocationHistory.tsx`
 
-Receives `assetId: string` as prop. Fetches all allocations for that asset (ordered by `created_at DESC`), renders a timeline list. Active allocations (returned_at IS NULL) are visually highlighted. Shows "No previous allocations" when list is empty.
+Receives `assetId: string` and `currentUserRole: UserRole` as props. Fetches all allocations for that asset (ordered by `created_at DESC`) and the pending transfer request (if any) for the asset. Renders a timeline list. Active allocations (returned_at IS NULL) are visually highlighted. Shows "No previous allocations" when list is empty.
+
+If a `Pending` transfer request exists for the asset AND `currentUserRole` is `'Admin'` or `'Asset Manager'`, the component renders inline **Approve** and **Reject** buttons alongside that transfer request entry. Clicking Approve calls `allocationService.approveTransferRequest()`; clicking Reject calls `allocationService.rejectTransferRequest()`. Both actions refresh the component state on completion. This keeps the approval workflow on Screen 5 without requiring a separate admin inbox page.
 
 ### `src/services/assetService.ts`
 
@@ -471,9 +473,9 @@ stateDiagram-v2
 
 ### Property 14: Allocation history is complete and correctly ordered
 
-*For any* asset with N allocation records, the AllocationHistory component shall render exactly N entries ordered by creation date descending (most recent first), with the active allocation (returned_at IS NULL) visually distinguished from returned allocations.
+*For any* asset with N allocation records, the AllocationHistory component shall render exactly N entries ordered by creation date descending (most recent first), with the active allocation (returned_at IS NULL) visually distinguished from returned allocations. Additionally, *for any* asset with a Pending transfer request, when the current user role is `'Admin'` or `'Asset Manager'`, the component shall render inline Approve and Reject buttons for that request; when the role is `'Employee'` or `'Department Head'`, those buttons shall not be present in the rendered output.
 
-**Validates: Requirements 15.1, 15.2, 15.3, 15.4**
+**Validates: Requirements 15.1, 15.2, 15.3, 15.4, 15.6**
 
 ### Property 15: Transfer approval atomically swaps the allocation
 

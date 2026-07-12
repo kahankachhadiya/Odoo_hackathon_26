@@ -201,6 +201,7 @@ AssetFlow Stage 2 builds upon the foundational infrastructure established in Sta
 3. THE allocation history SHALL be ordered with most recent allocations first
 4. THE allocation history SHALL distinguish active allocations with visual highlighting (e.g., bold text or colored background)
 5. IF an asset has no allocation history, THE Screen_5 SHALL display "No previous allocations" in the history section
+6. IF the selected asset has a 'Pending' transfer request AND the current user has role 'Admin' or 'Asset Manager', THEN THE Screen_5 Allocation History section SHALL display inline 'Approve' and 'Reject' action buttons for that pending request
 
 ### Requirement 16: Database Migration Script for Schema Updates
 
