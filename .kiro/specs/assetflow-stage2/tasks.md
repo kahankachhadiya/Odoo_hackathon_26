@@ -34,15 +34,15 @@ Implement the Stage 2 asset management layer on top of the existing Stage 1 Supa
   - Add commented rollback statements at the bottom for manual recovery
   - _Requirements: 1, 2, 3, 4, 5, 6, 7, 8, 9, 16, 17, 20_
 
-- [ ] 2. Extend TypeScript types and database type definitions
-  - [ ] 2.1 Add Stage 2 domain types to `src/types/index.ts`
+- [x] 2. Extend TypeScript types and database type definitions
+  - [x] 2.1 Add Stage 2 domain types to `src/types/index.ts`
     - Add `AssetStatus` and `TransferRequestStatus` union types
     - Add `Asset`, `AssetWithCategory`, `Allocation`, `AllocationWithProfiles`, `TransferRequest` interfaces
     - Add `CreateAssetInput`, `CreateAllocationInput`, `CreateTransferRequestInput` input interfaces
     - Add `AllocationConflictError` and `DuplicateSerialError` typed error classes (extend `Error`, set `this.name`)
     - _Requirements: 2, 3, 4_
 
-  - [ ] 2.2 Extend `src/lib/database.types.ts` with Stage 2 tables
+  - [x] 2.2 Extend `src/lib/database.types.ts` with Stage 2 tables
     - Add `assets`, `allocations`, `transfer_requests` Row/Insert/Update shapes to the `Tables` object
     - Add `asset_status` and `transfer_request_status` to the `Enums` object
     - Add `is_asset_manager` to the `Functions` object
