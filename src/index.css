@@ -109,3 +109,8 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+/* Spinner animation used by AuthCallback loading state */
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
