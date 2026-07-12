@@ -50,8 +50,8 @@ function mapRowToAllocationWithProfiles(row: AllocationJoinRow): AllocationWithP
 /** The Supabase select string used for all double-profile joins. */
 const ALLOCATION_WITH_PROFILES_SELECT = `
   *,
-  assigned_to_profile:profiles!assigned_to(full_name),
-  assigned_by_profile:profiles!assigned_by(full_name)
+  assigned_to_profile:profiles!allocations_assigned_to_fkey(full_name),
+  assigned_by_profile:profiles!allocations_assigned_by_fkey(full_name)
 ` as const
 
 // ─── getAllocationsForAsset ───────────────────────────────────────────────────

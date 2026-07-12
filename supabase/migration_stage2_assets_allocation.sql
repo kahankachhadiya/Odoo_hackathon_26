@@ -154,10 +154,14 @@ CREATE TABLE IF NOT EXISTS allocations (
   asset_id              UUID        NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
 
   -- The employee receiving the asset; deletion blocked while allocations exist
-  assigned_to           UUID        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  assigned_to           UUID        NOT NULL,
+  CONSTRAINT allocations_assigned_to_fkey
+    FOREIGN KEY (assigned_to) REFERENCES profiles(id) ON DELETE RESTRICT,
 
   -- The manager/admin who performed the allocation
-  assigned_by           UUID        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  assigned_by           UUID        NOT NULL,
+  CONSTRAINT allocations_assigned_by_fkey
+    FOREIGN KEY (assigned_by) REFERENCES profiles(id) ON DELETE RESTRICT,
 
   -- Optional planned return date (date only, no time component)
   expected_return_date  DATE,
@@ -167,7 +171,10 @@ CREATE TABLE IF NOT EXISTS allocations (
   returned_at           TIMESTAMPTZ,
 
   -- Optional description of asset condition upon return
-  return_condition      TEXT
+  return_condition      TEXT,
+
+  -- Creation timestamp, immutable after insert
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 

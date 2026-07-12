@@ -229,15 +229,23 @@ CREATE TABLE assets (
 -- Records every asset assignment — both active (returned_at IS NULL) and
 -- historical (returned_at IS NOT NULL). ON DELETE RESTRICT on all FKs
 -- preserves the full audit trail.
+-- Foreign key constraints are explicitly named to support Supabase's
+-- multi-FK join syntax (profiles!allocations_assigned_to_fkey).
 -- ---------------------------------------------------------------------------
 CREATE TABLE allocations (
   id                   UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  asset_id             UUID        NOT NULL REFERENCES assets(id)   ON DELETE RESTRICT,
-  assigned_to          UUID        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
-  assigned_by          UUID        NOT NULL REFERENCES profiles(id) ON DELETE RESTRICT,
+  asset_id             UUID        NOT NULL REFERENCES assets(id) ON DELETE RESTRICT,
+  assigned_to          UUID        NOT NULL,
+  assigned_by          UUID        NOT NULL,
   expected_return_date DATE,
   returned_at          TIMESTAMPTZ,  -- NULL = active allocation
-  return_condition     TEXT
+  return_condition     TEXT,
+  created_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
+  
+  CONSTRAINT allocations_assigned_to_fkey
+    FOREIGN KEY (assigned_to) REFERENCES profiles(id) ON DELETE RESTRICT,
+  CONSTRAINT allocations_assigned_by_fkey
+    FOREIGN KEY (assigned_by) REFERENCES profiles(id) ON DELETE RESTRICT
 );
 
 -- ---------------------------------------------------------------------------
