@@ -1,0 +1,137 @@
+.dashboard-page {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+}
+
+.dashboard-header h1 {
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.overview-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.kpi-card {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-pill);
+  padding: 16px 24px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  transition: var(--transition-all);
+}
+
+.kpi-card:hover {
+  border-color: var(--border-light);
+}
+
+.kpi-label {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.kpi-value {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kpi-loading {
+  height: 24px;
+  width: 50%;
+  background-color: var(--bg-tertiary);
+  border-radius: 4px;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.overdue-alert {
+  background-color: transparent;
+  border: 1px solid var(--error);
+  color: var(--error);
+  padding: 16px 24px;
+  border-radius: var(--radius-pill);
+  font-weight: 500;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.action-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.action-btn {
+  background-color: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  border-radius: var(--radius-pill);
+  padding: 12px 24px;
+  font-size: 14px;
+  text-decoration: none;
+  transition: var(--transition-all);
+}
+
+.action-btn:hover {
+  background-color: var(--bg-tertiary);
+  border-color: var(--border-light);
+}
+
+.action-btn.primary {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+
+.action-btn.primary:hover {
+  background-color: var(--accent-bg);
+}
+
+.recent-activity h2 {
+  font-size: 20px;
+  margin-bottom: 24px;
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.activity-item {
+  background-color: transparent;
+  padding: 8px 0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.activity-message {
+  color: var(--text-primary);
+}
+
+.activity-date {
+  color: var(--text-secondary);
+  font-size: 13px;
+}
+
+.empty-state {
+  color: var(--text-secondary);
+  font-style: italic;
+  font-size: 14px;
+}
