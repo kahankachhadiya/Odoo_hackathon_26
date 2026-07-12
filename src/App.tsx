@@ -3,6 +3,8 @@ import LoginSignup from './pages/LoginSignup'
 import AuthCallback from './pages/AuthCallback'
 import Dashboard from './pages/Dashboard'
 import OrganizationSetup from './pages/OrganizationSetup'
+import AssetDirectory from './pages/AssetDirectory'
+import AllocationTransfer from './pages/AllocationTransfer'
 import AdminGuard from './components/AdminGuard'
 
 function App() {
@@ -27,6 +29,12 @@ function App() {
             </AdminGuard>
           }
         />
+
+        {/* Asset Directory — all authenticated roles — Requirements: 10.1, 12.1 */}
+        <Route path="/assets" element={<AssetDirectory />} />
+
+        {/* Allocation & Transfer — all authenticated roles — Requirements: 10.1, 12.1 */}
+        <Route path="/allocations" element={<AllocationTransfer />} />
 
         {/* Catch-all → back to login */}
         <Route path="*" element={<Navigate to="/" replace />} />

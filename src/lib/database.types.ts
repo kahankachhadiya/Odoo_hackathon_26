@@ -174,6 +174,7 @@ export type Database = {
           expected_return_date: string | null
           returned_at: string | null
           return_condition: string | null
+          created_at: string
         }
         Insert: {
           id?: string
@@ -183,6 +184,7 @@ export type Database = {
           expected_return_date?: string | null
           returned_at?: string | null
           return_condition?: string | null
+          created_at?: string
         }
         Update: {
           id?: string
@@ -192,6 +194,7 @@ export type Database = {
           expected_return_date?: string | null
           returned_at?: string | null
           return_condition?: string | null
+          created_at?: string
         }
         Relationships: [
           {

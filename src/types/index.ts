@@ -75,6 +75,7 @@ export interface Allocation {
   expected_return_date: string | null
   returned_at: string | null
   return_condition: string | null
+  created_at: string
 }
 
 export interface AllocationWithProfiles extends Allocation {

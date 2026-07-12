@@ -26,6 +26,7 @@ interface AllocationJoinRow {
   expected_return_date: string | null
   returned_at: string | null
   return_condition: string | null
+  created_at: string
   assigned_to_profile: { full_name: string | null } | null
   assigned_by_profile: { full_name: string | null } | null
 }
@@ -40,6 +41,7 @@ function mapRowToAllocationWithProfiles(row: AllocationJoinRow): AllocationWithP
     expected_return_date: row.expected_return_date,
     returned_at: row.returned_at,
     return_condition: row.return_condition,
+    created_at: row.created_at,
     assigned_to_name: row.assigned_to_profile?.full_name ?? null,
     assigned_by_name: row.assigned_by_profile?.full_name ?? null,
   }
@@ -128,6 +130,7 @@ export async function createAllocation(input: CreateAllocationInput): Promise<Al
     expected_return_date: row.expected_return_date,
     returned_at: row.returned_at,
     return_condition: row.return_condition,
+    created_at: row.created_at,
   }
 
   return allocation
