@@ -61,12 +61,12 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0 0 0.75rem',
     fontSize: '1rem',
     fontWeight: 600,
-    color: '#111827',
+    color: 'var(--text-primary)',
   },
   emptyMessage: {
     margin: 0,
     fontSize: '0.9rem',
-    color: '#6b7280',
+    color: 'var(--text-secondary)',
     fontStyle: 'italic',
   },
   list: {
@@ -78,16 +78,17 @@ const styles: Record<string, React.CSSProperties> = {
   },
   listItem: {
     fontSize: '0.9rem',
-    color: '#111827',
+    color: 'var(--text-primary)',
     display: 'flex',
     gap: '0.5rem',
     alignItems: 'baseline',
   },
   bookingTitle: {
     fontWeight: 600,
+    color: 'var(--text-primary)',
   },
   bookingTime: {
-    color: '#6b7280',
+    color: 'var(--text-secondary)',
     fontSize: '0.85rem',
   },
 }

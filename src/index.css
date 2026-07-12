@@ -7,7 +7,7 @@
   --bg-tertiary: #242424;
   
   --text-primary: #ffffff;
-  --text-secondary: #a1a1aa;
+  --text-secondary: #f9fafb; /* Almost white */
   
   --border-color: #333333;
   --border-light: #444444;
@@ -49,9 +49,13 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--text-primary);
 }
 
-p {
-  margin: 0;
-  color: var(--text-secondary);
+p, span, label, td, th, div {
+  color: var(--text-primary);
+}
+
+::placeholder {
+  color: #9ca3af;
+  opacity: 1;
 }
 
 /* Futuristic Global Form Elements */
@@ -60,7 +64,7 @@ input, select, textarea {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-sm);
   padding: 12px 16px;
-  color: var(--text-primary);
+  color: #ffffff;
   font-family: inherit;
   font-size: 14px;
   outline: none;
