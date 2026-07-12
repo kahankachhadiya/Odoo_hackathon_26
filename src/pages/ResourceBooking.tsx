@@ -4,7 +4,7 @@
 // Requirements: 7, 8, 9
 
 import { useEffect, useState } from 'react'
-import { listBookableAssets, getTodaysBookings } from '../services/bookingService'
+import { listBookableAssets, getTodaysBookings, syncBookingStatuses } from '../services/bookingService'
 import BookableAssetSelect from '../components/BookableAssetSelect'
 import BookingForm from '../components/BookingForm'
 import ScheduleView from '../components/ScheduleView'
@@ -55,10 +55,11 @@ export default function ResourceBooking() {
   async function fetchTodaysBookings(assetId: string) {
     setLoadingBookings(true)
     try {
+      // Sync booking statuses first (Upcoming→Ongoing→Completed) and update asset.status
+      await syncBookingStatuses(assetId)
       const bookings = await getTodaysBookings(assetId)
       setTodaysBookings(bookings)
     } catch {
-      // On failure, keep the current list to avoid a jarring blank state
       setTodaysBookings([])
     } finally {
       setLoadingBookings(false)

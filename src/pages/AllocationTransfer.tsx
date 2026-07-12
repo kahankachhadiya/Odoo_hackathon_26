@@ -2,13 +2,14 @@
 // Requirements: 12, 13, 14, 15
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { searchAssets } from '../services/assetService'
+import { searchAssets, listAssets } from '../services/assetService'
 import {
   getActiveAllocation,
   createAllocation,
   createTransferRequest,
   getPendingTransferForAsset,
 } from '../services/allocationService'
+import { getActiveBookingForAsset } from '../services/bookingService'
 import { getCurrentUserRole } from '../services/authService'
 import { supabase } from '../lib/supabaseClient'
 import AllocationHistory from '../components/AllocationHistory'
@@ -42,8 +43,8 @@ export default function AllocationTransfer() {
 
   // ── Typeahead ──────────────────────────────────────────────────────────────
   const [searchQuery, setSearchQuery] = useState('')
+  const [allAssets, setAllAssets] = useState<AssetWithCategory[]>([])
   const [suggestions, setSuggestions] = useState<AssetWithCategory[]>([])
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
 
@@ -53,6 +54,7 @@ export default function AllocationTransfer() {
   // ── Selected asset ─────────────────────────────────────────────────────────
   const [selectedAsset, setSelectedAsset] = useState<AssetWithCategory | null>(null)
   const [activeAllocation, setActiveAllocation] = useState<AllocationWithProfiles | null>(null)
+  const [activeBooking, setActiveBooking] = useState<{ title: string; start_time: string; end_time: string } | null>(null)
   const [assetLoading, setAssetLoading] = useState(false)
 
   // ── Profiles dropdown (Assign To) ──────────────────────────────────────────
@@ -87,6 +89,22 @@ export default function AllocationTransfer() {
       ])
       setCurrentUserId(user?.id ?? null)
       setCurrentUserRole(role)
+    })()
+  }, [])
+
+  // Load all assets on mount so they're visible without typing
+  useEffect(() => {
+    void (async () => {
+      setSearchLoading(true)
+      try {
+        const assets = await listAssets()
+        setAllAssets(assets)
+        setSuggestions(assets)
+      } catch {
+        // silently ignore
+      } finally {
+        setSearchLoading(false)
+      }
     })()
   }, [])
 
@@ -132,8 +150,8 @@ export default function AllocationTransfer() {
     }
 
     if (query.length < 2) {
-      setSuggestions([])
-      setShowSuggestions(false)
+      // Show all assets when cleared
+      setSuggestions(allAssets)
       setSearchLoading(false)
       return
     }
@@ -146,10 +164,8 @@ export default function AllocationTransfer() {
 
     try {
       const results = await searchAssets(query)
-      // If this request was aborted while awaiting, ignore the result
       if (controller.signal.aborted) return
       setSuggestions(results)
-      setShowSuggestions(true)
     } catch (err) {
       if (controller.signal.aborted) return
       setSearchError(err instanceof Error ? err.message : 'Search failed.')
@@ -157,15 +173,14 @@ export default function AllocationTransfer() {
     } finally {
       if (!controller.signal.aborted) setSearchLoading(false)
     }
-  }, [])
+  }, [allAssets])
 
   const debouncedSearch = useDebounce(fireSearch, 300)
 
   function handleSearchChange(value: string) {
     setSearchQuery(value)
     if (value.length < 2) {
-      setSuggestions([])
-      setShowSuggestions(false)
+      setSuggestions(allAssets)
       setSearchLoading(false)
       return
     }
@@ -176,9 +191,7 @@ export default function AllocationTransfer() {
   // ── Asset selection ────────────────────────────────────────────────────────
 
   async function handleSelectAsset(asset: AssetWithCategory) {
-    setSearchQuery(`${asset.tag} — ${asset.name}`)
-    setShowSuggestions(false)
-    setSuggestions([])
+    setSearchQuery('')
 
     // Reset all form state
     setAllocationSuccess(null)
@@ -189,17 +202,20 @@ export default function AllocationTransfer() {
     setExpectedReturnDate('')
     setTransferReason('')
     setShowTransferFallback(false)
+    setActiveBooking(null)
 
     setAssetLoading(true)
     try {
-      // Load full asset + active allocation in parallel
-      const [freshResults, alloc] = await Promise.all([
+      // Load full asset + active allocation + active booking in parallel
+      const [freshResults, alloc, booking] = await Promise.all([
         searchAssets(asset.tag),
         getActiveAllocation(asset.id),
+        getActiveBookingForAsset(asset.id),
       ])
       const fresh = freshResults.find((a) => a.id === asset.id) ?? asset
       setSelectedAsset(fresh)
       setActiveAllocation(alloc)
+      setActiveBooking(booking)
     } catch {
       // Fall back to the suggestion data if the refresh fails
       setSelectedAsset(asset)
@@ -235,26 +251,30 @@ export default function AllocationTransfer() {
       setExpectedReturnDate('')
 
       // Refresh asset state
-      const [freshResults, alloc] = await Promise.all([
+      const [freshResults, alloc, booking] = await Promise.all([
         searchAssets(selectedAsset.tag),
         getActiveAllocation(selectedAsset.id),
+        getActiveBookingForAsset(selectedAsset.id),
       ])
       const fresh = freshResults.find((a) => a.id === selectedAsset.id) ?? selectedAsset
       setSelectedAsset(fresh)
       setActiveAllocation(alloc)
+      setActiveBooking(booking)
       setHistoryKey((k) => k + 1)
     } catch (err) {
       if (err instanceof AllocationConflictError) {
         setAllocationError(err.message)
         setShowTransferFallback(true)
         // Refresh so UI correctly shows the Allocated state
-        const [freshResults, alloc] = await Promise.all([
+        const [freshResults, alloc, booking] = await Promise.all([
           searchAssets(selectedAsset.tag),
           getActiveAllocation(selectedAsset.id),
+          getActiveBookingForAsset(selectedAsset.id),
         ])
         const fresh = freshResults.find((a) => a.id === selectedAsset.id) ?? selectedAsset
         setSelectedAsset(fresh)
         setActiveAllocation(alloc)
+        setActiveBooking(booking)
       } else {
         setAllocationError(err instanceof Error ? err.message : 'Allocation failed.')
       }
@@ -307,7 +327,8 @@ export default function AllocationTransfer() {
   const showAllocationForm =
     selectedAsset !== null &&
     selectedAsset.status === 'Available' &&
-    !showTransferFallback
+    !showTransferFallback &&
+    activeBooking === null
 
   const showTransferForm =
     selectedAsset !== null &&
@@ -322,63 +343,57 @@ export default function AllocationTransfer() {
         <h1 style={styles.heading}>Allocation &amp; Transfer</h1>
       </div>
 
-      {/* ── Typeahead search ── */}
-      <div style={styles.searchWrapper}>
+      <div style={styles.layout}>
+
+      {/* ── Asset list / search ── */}
+      <div style={styles.assetListSection}>
         <div style={styles.searchInputWrapper}>
           <input
             type="text"
-            placeholder="Search by asset tag or name…"
+            placeholder="Filter by asset tag or name…"
             value={searchQuery}
             onChange={(e) => handleSearchChange(e.target.value)}
-            onFocus={() => {
-              if (suggestions.length > 0) setShowSuggestions(true)
-            }}
-            onBlur={() => {
-              // Delay so clicks on suggestions register first
-              setTimeout(() => setShowSuggestions(false), 150)
-            }}
             style={styles.searchInput}
-            aria-label="Search assets"
-            aria-autocomplete="list"
-            aria-expanded={showSuggestions}
+            aria-label="Filter assets"
           />
           {searchLoading && <span style={styles.searchSpinner}>…</span>}
         </div>
 
         {searchError && <p style={styles.errorText}>{searchError}</p>}
 
-        {/* Suggestions dropdown */}
-        {showSuggestions && suggestions.length > 0 && (
-          <ul style={styles.suggestionsList} role="listbox" aria-label="Asset suggestions">
-            {suggestions.map((asset) => (
-              <li
-                key={asset.id}
-                style={styles.suggestionItem}
-                role="option"
-                aria-selected={false}
-                onMouseDown={() => void handleSelectAsset(asset)}
-              >
-                <span style={styles.suggestionTag}>{asset.tag}</span>
-                {' — '}
-                <span style={styles.suggestionName}>{asset.name}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        {showSuggestions && !searchLoading && suggestions.length === 0 &&
-          searchQuery.length >= 2 && (
-          <p style={styles.noResults}>No assets found matching &ldquo;{searchQuery}&rdquo;</p>
-        )}
+        <div style={styles.assetGrid}>
+          {suggestions.length === 0 && !searchLoading && (
+            <p style={styles.noResults}>No assets found{searchQuery.length >= 2 ? ` matching "${searchQuery}"` : ''}.</p>
+          )}
+          {suggestions.map((asset) => (
+            <button
+              key={asset.id}
+              type="button"
+              onClick={() => void handleSelectAsset(asset)}
+              style={{
+                ...styles.assetCard,
+                ...(selectedAsset?.id === asset.id ? styles.assetCardSelected : {}),
+              }}
+            >
+              <span style={styles.assetCardTag}>{asset.tag}</span>
+              <span style={styles.assetCardName}>{asset.name}</span>
+              <span style={{ ...styles.assetCardStatus, ...statusBadgeColor(asset.status) }}>
+                {asset.status}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
+
+      {/* ── Right panel: asset details ── */}
+      <div style={styles.rightPanel}>
+      {/* ── Asset loading ── */}
+      {assetLoading && <p style={styles.stateText}>Loading asset details…</p>}
 
       {/* ── No asset selected ── */}
       {!selectedAsset && !assetLoading && (
-        <p style={styles.emptyState}>Please select an asset to view allocation options</p>
+        <p style={styles.emptyState}>Select an asset on the left to view allocation options</p>
       )}
-
-      {/* ── Asset loading ── */}
-      {assetLoading && <p style={styles.stateText}>Loading asset details…</p>}
 
       {/* ── Asset selected ── */}
       {selectedAsset && !assetLoading && (
@@ -413,6 +428,18 @@ export default function AllocationTransfer() {
               <dd style={styles.dd}>{selectedAsset.serial_number ?? <span style={styles.muted}>—</span>}</dd>
             </dl>
           </div>
+
+          {/* ── Active booking warning (blocks allocation) ── */}
+          {activeBooking !== null && selectedAsset?.status !== 'Allocated' && (
+            <div style={styles.bookingBlockBanner} role="alert">
+              <strong>Allocation blocked:</strong> This asset has an active booking
+              &ldquo;{activeBooking.title}&rdquo; from{' '}
+              {new Date(activeBooking.start_time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}
+              {' '}to{' '}
+              {new Date(activeBooking.end_time).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' })}.
+              It cannot be allocated until the booking ends.
+            </div>
+          )}
 
           {/* ── Allocate Asset form (status === Available) ── */}
           {showAllocationForm && (
@@ -543,6 +570,8 @@ export default function AllocationTransfer() {
           )}
         </div>
       )}
+      </div> {/* rightPanel */}
+      </div> {/* layout */}
     </main>
   )
 }
@@ -581,11 +610,18 @@ const styles: Record<string, React.CSSProperties> = {
     fontWeight: 700,
     color: '#111',
   },
-  // ── Search ─────────────────────────────────────────────────────────────────
-  searchWrapper: {
-    position: 'relative',
-    maxWidth: '520px',
-    marginBottom: '1.5rem',
+  // ── Two-column layout ──────────────────────────────────────────────────────
+  layout: {
+    display: 'flex',
+    gap: '1.5rem',
+    alignItems: 'flex-start',
+  },
+  // ── Left panel: asset list ─────────────────────────────────────────────────
+  assetListSection: {
+    flex: '0 0 280px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.75rem',
   },
   searchInputWrapper: {
     position: 'relative',
@@ -595,7 +631,7 @@ const styles: Record<string, React.CSSProperties> = {
   searchInput: {
     width: '100%',
     padding: '0.6rem 2.5rem 0.6rem 0.875rem',
-    fontSize: '0.9rem',
+    fontSize: '0.875rem',
     border: '1px solid #d1d5db',
     borderRadius: '6px',
     outline: 'none',
@@ -609,36 +645,50 @@ const styles: Record<string, React.CSSProperties> = {
     fontSize: '0.85rem',
     color: '#9ca3af',
   },
-  suggestionsList: {
-    position: 'absolute',
-    top: 'calc(100% + 4px)',
-    left: 0,
-    right: 0,
-    margin: 0,
-    padding: '0.25rem 0',
-    listStyle: 'none',
-    backgroundColor: '#ffffff',
-    border: '1px solid #d1d5db',
-    borderRadius: '6px',
-    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-    zIndex: 50,
-    maxHeight: '260px',
+  assetGrid: {
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    maxHeight: 'calc(100vh - 180px)',
     overflowY: 'auto',
   },
-  suggestionItem: {
-    padding: '0.55rem 0.875rem',
-    fontSize: '0.9rem',
-    color: '#111',
+  assetCard: {
+    display: 'flex',
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    gap: '0.25rem',
+    padding: '0.75rem 1rem',
+    backgroundColor: '#ffffff',
+    border: '1px solid #e5e7eb',
+    borderRadius: '8px',
     cursor: 'pointer',
+    textAlign: 'left',
+    width: '100%',
+    boxSizing: 'border-box',
+    transition: 'border-color 0.15s',
   },
-  suggestionTag: {
+  assetCardSelected: {
+    border: '2px solid #2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  assetCardTag: {
     fontFamily: 'monospace',
-    fontSize: '0.85rem',
-    fontWeight: 600,
+    fontSize: '0.78rem',
+    fontWeight: 700,
     color: '#374151',
+    letterSpacing: '0.04em',
   },
-  suggestionName: {
-    color: '#374151',
+  assetCardName: {
+    fontSize: '0.875rem',
+    fontWeight: 600,
+    color: '#111827',
+  },
+  assetCardStatus: {
+    fontSize: '0.72rem',
+    fontWeight: 600,
+    padding: '0.15rem 0.5rem',
+    borderRadius: '999px',
+    marginTop: '0.1rem',
   },
   noResults: {
     margin: '0.5rem 0 0',
@@ -649,6 +699,11 @@ const styles: Record<string, React.CSSProperties> = {
     margin: '0.4rem 0 0',
     fontSize: '0.85rem',
     color: '#dc2626',
+  },
+  // ── Right panel: asset details ─────────────────────────────────────────────
+  rightPanel: {
+    flex: 1,
+    minWidth: 0,
   },
   stateText: {
     color: '#666',
@@ -828,5 +883,13 @@ const styles: Record<string, React.CSSProperties> = {
     border: 'none',
     borderRadius: '6px',
     cursor: 'pointer',
+  },
+  bookingBlockBanner: {
+    padding: '0.75rem 1rem',
+    backgroundColor: '#fff7ed',
+    border: '1px solid #fed7aa',
+    borderRadius: '8px',
+    fontSize: '0.875rem',
+    color: '#9a3412',
   },
 }
